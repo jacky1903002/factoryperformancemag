@@ -72,32 +72,34 @@
                 </label>
             </div>
             <div class="text-xs text-gray-500">
-                提示：欄位名稱已固定；加減分欄位由系統自動帶入。
+                提示：雙擊上方頁籤名稱可直接更改標題名稱；加減分與排行由系統自動帶入。
             </div>
         </div>
 
-        <!-- 頁籤導覽 -->
-        <nav class="bg-white border-b px-6 flex space-x-6 overflow-x-auto">
-            <button onclick="switchTab('sheet1')" class="tab-btn py-3 px-2 text-sm font-medium tab-active" data-target="sheet1">1. 加班配合度</button>
-            <button onclick="switchTab('sheet2')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet2">2. 月競賽</button>
-            <button onclick="switchTab('sheet3')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet3">3. 品質改善</button>
-            <button onclick="switchTab('sheet4')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet4">4. 獎懲紀錄</button>
-            <button onclick="switchTab('sheet5')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet5">5. 跨單位支援</button>
-            <button onclick="switchTab('sheet6')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet6">6. 總分與部門排行</button>
-            <button onclick="switchTab('chartSection')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="chartSection">7. 排行視覺圖表</button>
+        <!-- 頁籤導覽 (支援雙擊更改名稱) -->
+        <nav id="tabs-nav" class="bg-white border-b px-6 flex space-x-6 overflow-x-auto">
+            <button onclick="switchTab('sheet1')" ondblclick="renameTab('sheet1')" class="tab-btn py-3 px-2 text-sm font-medium tab-active" data-target="sheet1" id="btn-sheet1">1. 加班配合度</button>
+            <button onclick="switchTab('sheet2')" ondblclick="renameTab('sheet2')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet2" id="btn-sheet2">2. 月競賽</button>
+            <button onclick="switchTab('sheet3')" ondblclick="renameTab('sheet3')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet3" id="btn-sheet3">3. 品質改善</button>
+            <button onclick="switchTab('sheet4')" ondblclick="renameTab('sheet4')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet4" id="btn-sheet4">4. 獎懲紀錄</button>
+            <button onclick="switchTab('sheet5')" ondblclick="renameTab('sheet5')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet5" id="btn-sheet5">5. 跨單位支援</button>
+            <button onclick="switchTab('sheet6')" ondblclick="renameTab('sheet6')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet6" id="btn-sheet6">6. 總分與部門排行</button>
+            <button onclick="switchTab('sheet7')" ondblclick="renameTab('sheet7')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet7" id="btn-sheet7">7. 排行視覺圖表</button>
         </nav>
 
         <!-- 內容主體區 -->
         <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
             <div id="sheet-container"></div>
-            <div id="chart-section" class="tab-content hidden space-y-6">
+            <div id="sheet7-container" class="hidden space-y-6">
                 <div class="bg-white p-6 rounded-lg shadow">
-                    <h2 class="text-lg font-bold mb-4">各部門排行視覺圖表</h2>
-                    <div class="mb-4">
-                        <label class="text-sm font-medium text-gray-700 mr-2">選擇部門檢視：</label>
-                        <select id="chart-dept-select" onchange="renderCharts()" class="px-3 py-1 border rounded-md text-sm">
-                            <option value="all">全體人員總覽</option>
-                        </select>
+                    <h2 id="sheet7-title" class="text-lg font-bold mb-4">7. 各部門與全廠排行視覺圖表分析</h2>
+                    <div class="mb-4 flex flex-wrap gap-4 items-center">
+                        <div>
+                            <label class="text-sm font-medium text-gray-700 mr-2">選擇部門檢視：</label>
+                            <select id="chart-dept-select" onchange="renderCharts()" class="px-3 py-1 border rounded-md text-sm">
+                                <option value="all">全體人員總覽</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="w-full h-96">
                         <canvas id="rankingChart"></canvas>
@@ -129,7 +131,6 @@
         let isSignUp = false;
         let activeTab = 'sheet1';
 
-        // 依據圖片與需求設定的初始資料結構 (包含石墨銑床課與車床課完整人員清單)
         let appData = {
             sheet1: {
                 title: "1. 加班配合度",
@@ -152,7 +153,7 @@
                 ]
             },
             sheet2: {
-                title: "2. 月競賽 (優勝+10 | 入選+5)",
+                title: "2. 月競賽",
                 columns: ["部門名稱", "工號", "中文名", "加分", "備註"],
                 rows: [
                     ["石墨銑床課", "0803007", "程柏溪", "", "優勝"],
@@ -172,7 +173,7 @@
                 ]
             },
             sheet3: {
-                title: "3. 品質改善 (+3)",
+                title: "3. 品質改善",
                 columns: ["部門名稱", "工號", "中文名", "加分", "備註"],
                 rows: [
                     ["石墨銑床課", "0803007", "程柏溪", "", "品質改善"],
@@ -192,7 +193,7 @@
                 ]
             },
             sheet4: {
-                title: "4. 獎懲記錄 (大功+20|小功+10|嘉獎+5|大過-20|小過-10|申誡-5)",
+                title: "4. 獎懲紀錄",
                 columns: ["部門名稱", "工號", "中文名", "加減分", "備註"],
                 rows: [
                     ["石墨銑床課", "0803007", "程柏溪", "", "大功"],
@@ -212,7 +213,7 @@
                 ]
             },
             sheet5: {
-                title: "5. 支援 (A級支援+10 | B級支援+5 | C級支援+3)",
+                title: "5. 跨單位支援",
                 columns: ["部門名稱", "工號", "中文名", "加分", "備註"],
                 rows: [
                     ["石墨銑床課", "0803007", "程柏溪", "", "A級支援"],
@@ -232,8 +233,13 @@
                 ]
             },
             sheet6: {
-                title: "6. 總分與部門排名總覽",
+                title: "6. 總分與部門排行",
                 columns: ["部門名稱", "工號", "中文名", "加班配合度", "月競賽", "品質改善", "支援", "獎懲紀錄", "總分", "排名"],
+                rows: []
+            },
+            sheet7: {
+                title: "7. 排行視覺圖表",
+                columns: [],
                 rows: []
             }
         };
@@ -262,11 +268,13 @@
                 dbRef.on('value', snapshot => {
                     const data = snapshot.val();
                     if (data) {
-                        appData = data;
+                        // 合併確保擁有 sheet7 與新架構
+                        appData = { ...appData, ...data };
                     } else {
                         dbRef.set(appData);
                     }
                     processFormulasAndScores();
+                    updateTabNamesUI();
                     renderActiveTab();
                 });
             } else {
@@ -304,6 +312,26 @@
 
         document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
 
+        function renameTab(sheetKey) {
+            let currentTitle = appData[sheetKey].title;
+            let newTitle = prompt("請輸入新的工作表名稱：", currentTitle);
+            if (newTitle && newTitle.trim() !== "") {
+                appData[sheetKey].title = newTitle.trim();
+                saveData();
+                updateTabNamesUI();
+                renderActiveTab();
+            }
+        }
+
+        function updateTabNamesUI() {
+            ['sheet1', 'sheet2', 'sheet3', 'sheet4', 'sheet5', 'sheet6', 'sheet7'].forEach(key => {
+                let btn = document.getElementById(`btn-${key}`);
+                if (btn && appData[key]) {
+                    btn.textContent = appData[key].title;
+                }
+            });
+        }
+
         function switchTab(tabId) {
             activeTab = tabId;
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -317,18 +345,19 @@
             });
 
             document.getElementById('sheet-container').classList.add('hidden');
-            document.getElementById('chart-section').classList.add('hidden');
+            document.getElementById('sheet7-container').classList.add('hidden');
 
-            if (tabId.startsWith('sheet')) {
+            if (tabId === 'sheet7') {
+                document.getElementById('sheet7-container').classList.remove('hidden');
+                document.getElementById('sheet7-title').textContent = appData.sheet7.title;
+                updateDeptSelectOptions();
+                renderCharts();
+            } else {
                 document.getElementById('sheet-container').classList.remove('hidden');
                 if (tabId === 'sheet6') {
                     processFormulasAndScores();
                 }
                 renderActiveTab();
-            } else if (tabId === 'chartSection') {
-                document.getElementById('chart-section').classList.remove('hidden');
-                updateDeptSelectOptions();
-                renderCharts();
             }
         }
 
@@ -337,9 +366,8 @@
             db.ref(`users/${currentUser.uid}/performanceData`).set(appData);
         }
 
-        // 統一自動計算工作表 1~5 的公式加減分，並對應順序彙整產生工作表 6
+        // 自動計算工作表 1~5 分數並彙整至工作表 6
         function processFormulasAndScores() {
-            // 1. 計算工作表 1 加班配合度公式
             if (appData.sheet1) {
                 appData.sheet1.rows.forEach(r => {
                     let weekday = Number(r[3]) || 0;
@@ -360,7 +388,6 @@
                 });
             }
 
-            // 2. 計算工作表 2 月競賽加分
             if (appData.sheet2) {
                 appData.sheet2.rows.forEach(r => {
                     let note = r[4] || r[3] || "";
@@ -371,7 +398,6 @@
                 });
             }
 
-            // 3. 計算工作表 3 品質改善加分
             if (appData.sheet3) {
                 appData.sheet3.rows.forEach(r => {
                     let note = r[4] || r[3] || "";
@@ -381,7 +407,6 @@
                 });
             }
 
-            // 4. 計算工作表 4 獎懲記錄加減分
             if (appData.sheet4) {
                 appData.sheet4.rows.forEach(r => {
                     let note = r[4] || r[3] || "";
@@ -396,7 +421,6 @@
                 });
             }
 
-            // 5. 計算工作表 5 支援加分
             if (appData.sheet5) {
                 appData.sheet5.rows.forEach(r => {
                     let note = r[4] || r[3] || "";
@@ -408,7 +432,6 @@
                 });
             }
 
-            // 6. 彙整至工作表 6：以工作表 1 的人員清單與部門為基準進行分數對應
             let employeeMap = {};
             if (appData.sheet1) {
                 appData.sheet1.rows.forEach(r => {
@@ -450,7 +473,6 @@
                 emp.total = emp.s1 + emp.s2 + emp.s3 + emp.s5 + emp.s4;
             });
 
-            // 依照總分排序計算全體總排名
             let sortedList = [...empList].sort((a, b) => b.total - a.total);
 
             appData.sheet6.rows = empList.map(emp => {
@@ -464,7 +486,7 @@
         }
 
         function renderActiveTab() {
-            if (!activeTab.startsWith('sheet')) return;
+            if (!activeTab.startsWith('sheet') || activeTab === 'sheet7') return;
             
             if (activeTab === 'sheet6') {
                 processFormulasAndScores();
@@ -482,7 +504,7 @@
                 <div class="bg-white p-6 rounded-lg shadow">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-bold text-gray-800">${sheet.title}</h2>
-                        ${activeTab !== 'sheet6' ? `<button onclick="addRow('${activeTab}')" class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 transition">+ 新增資料列</button>` : `<span class="text-xs text-gray-500">此工作表由工作表1~5自動彙整計算</span>`}
+                        ${activeTab !== 'sheet6' ? `<button onclick="addRow('${activeTab}')" class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 transition">+ 新增資料列</button>` : `<span class="text-xs text-gray-500">此工作表由工作表1~5自動彙整計算與排名</span>`}
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 border">
@@ -587,7 +609,7 @@
                 data: {
                     labels: labels.length ? labels : ['無資料'],
                     datasets: [{
-                        label: selectedDept === 'all' ? '全體人員總分排行' : `${selectedDept} 人員總分排行`,
+                        label: selectedDept === 'all' ? '全廠人員總分排行' : `${selectedDept} 人員總分排行`,
                         data: data.length ? data : [0],
                         backgroundColor: 'rgba(59, 130, 246, 0.6)',
                         borderColor: 'rgba(59, 130, 246, 1)',
@@ -607,7 +629,7 @@
         function exportToExcel() {
             processFormulasAndScores();
             const wb = XLSX.utils.book_new();
-            Object.keys(appData).forEach(key => {
+            ['sheet1', 'sheet2', 'sheet3', 'sheet4', 'sheet5', 'sheet6'].forEach(key => {
                 const sheet = appData[key];
                 const wsData = [sheet.columns, ...sheet.rows];
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -624,9 +646,9 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
                 
-                let sKeys = Object.keys(appData);
+                let sKeys = ['sheet1', 'sheet2', 'sheet3', 'sheet4', 'sheet5', 'sheet6'];
                 workbook.SheetNames.forEach((sheetName, idx) => {
-                    if (idx < sKeys.length && sKeys[idx] !== 'sheet6') {
+                    if (idx < sKeys.length) {
                         const ws = workbook.Sheets[sheetName];
                         const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
                         if (json.length > 0) {
