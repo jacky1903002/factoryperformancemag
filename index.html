@@ -49,7 +49,6 @@
         <header class="bg-white shadow px-6 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-4">
                 <h1 class="text-xl font-bold text-gray-800">🏭 工廠個人績效分析系統</h1>
-                <!-- 雲端連線狀態指示器 -->
                 <div id="connection-status" class="flex items-center space-x-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
                     <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
                     <span id="status-text">連線同步中...</span>
@@ -61,7 +60,7 @@
             </div>
         </header>
 
-        <!-- 工具列 (Excel 匯入/匯出) -->
+        <!-- 工具列 -->
         <div class="bg-white border-b px-6 py-2 flex justify-between items-center text-sm">
             <div class="flex space-x-2">
                 <button onclick="exportToExcel()" class="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition flex items-center space-x-1">
@@ -73,11 +72,11 @@
                 </label>
             </div>
             <div class="text-xs text-gray-500">
-                提示：工作表欄位標題與表格內容皆可雙擊修改；支援拖曳排序。
+                提示：欄位名稱已固定；加減分欄位由系統自動帶入。
             </div>
         </div>
 
-        <!-- 頁籤導覽 (更新為對應 7 個工作表的需求) -->
+        <!-- 頁籤導覽 -->
         <nav class="bg-white border-b px-6 flex space-x-6 overflow-x-auto">
             <button onclick="switchTab('sheet1')" class="tab-btn py-3 px-2 text-sm font-medium tab-active" data-target="sheet1">1. 加班配合度</button>
             <button onclick="switchTab('sheet2')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet2">2. 月競賽</button>
@@ -90,10 +89,7 @@
 
         <!-- 內容主體區 -->
         <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
-            <!-- 動態資料表格工作表區塊 (sheet1 ~ sheet6) -->
             <div id="sheet-container"></div>
-
-            <!-- 圖表呈現區塊 (對應原工作表7修改) -->
             <div id="chart-section" class="tab-content hidden space-y-6">
                 <div class="bg-white p-6 rounded-lg shadow">
                     <h2 class="text-lg font-bold mb-4">各部門排行視覺圖表</h2>
@@ -133,17 +129,26 @@
         let isSignUp = false;
         let activeTab = 'sheet1';
 
-        // 依據使用者最新欄位與加減分規則設定的初始資料結構
+        // 依據圖片與需求設定的初始資料結構 (包含石墨銑床課與車床課完整人員清單)
         let appData = {
             sheet1: {
                 title: "1. 加班配合度",
                 columns: ["部門名稱", "工號", "中文名", "平日加班", "休息日加班", "區間(202601~202606)總月份", "總計", "平均每月加班時數", "加減分", "備註"],
                 rows: [
-                    ["石墨銑床課", "0803007", "程柏溪", "84", "192", "6", "276", "46", "", ""],
-                    ["石墨銑床課", "0912004", "梁吉成", "69", "96", "6", "165", "27.5", "", ""],
-                    ["石墨銑床課", "1004017", "楊禮榮", "60", "168", "6", "228", "38", "", ""],
-                    ["石墨銑床課", "2005001", "任巧茹", "180", "96", "6", "276", "46", "", ""],
-                    ["石墨銑床課", "2109009", "鄭玄瑋", "132", "144", "6", "276", "46", "", ""]
+                    ["石墨銑床課", "0803007", "程柏溪", "84", "192", "6", "", "", "", ""],
+                    ["石墨銑床課", "0912004", "梁吉成", "69", "96", "6", "", "", "", ""],
+                    ["石墨銑床課", "1004017", "楊禮榮", "60", "168", "6", "", "", "", ""],
+                    ["石墨銑床課", "2005001", "任巧茹", "180", "96", "6", "", "", "", ""],
+                    ["石墨銑床課", "2109009", "鄭玄瑋", "132", "144", "6", "", "", "", ""],
+                    ["石墨銑床課", "2209003", "李譽輝", "100", "100", "6", "", "", "", ""],
+                    ["石墨銑床課", "2602003", "王仁傑", "90", "90", "6", "", "", "", ""],
+                    ["車床課", "0710001", "彭建智", "120", "100", "6", "", "", "", ""],
+                    ["車床課", "0802006", "莊隆璿", "110", "90", "6", "", "", "", ""],
+                    ["車床課", "0806001", "陳建華", "80", "80", "6", "", "", "", ""],
+                    ["車床課", "1001002", "朱建誠", "95", "95", "6", "", "", "", ""],
+                    ["車床課", "1006005", "彭世帆", "105", "85", "6", "", "", "", ""],
+                    ["車床課", "1007012", "黃吉良", "70", "70", "6", "", "", "", ""],
+                    ["車床課", "1010001", "陳秉鈛", "115", "115", "6", "", "", "", ""]
                 ]
             },
             sheet2: {
@@ -154,7 +159,16 @@
                     ["石墨銑床課", "0912004", "梁吉成", "", ""],
                     ["石墨銑床課", "1004017", "楊禮榮", "", ""],
                     ["石墨銑床課", "2005001", "任巧茹", "", ""],
-                    ["石墨銑床課", "2109009", "鄭玄瑋", "", "入選"]
+                    ["石墨銑床課", "2109009", "鄭玄瑋", "", "入選"],
+                    ["石墨銑床課", "2209003", "李譽輝", "", ""],
+                    ["石墨銑床課", "2602003", "王仁傑", "", ""],
+                    ["車床課", "0710001", "彭建智", "", ""],
+                    ["車床課", "0802006", "莊隆璿", "", ""],
+                    ["車床課", "0806001", "陳建華", "", ""],
+                    ["車床課", "1001002", "朱建誠", "", ""],
+                    ["車床課", "1006005", "彭世帆", "", ""],
+                    ["車床課", "1007012", "黃吉良", "", ""],
+                    ["車床課", "1010001", "陳秉鈛", "", ""]
                 ]
             },
             sheet3: {
@@ -165,7 +179,16 @@
                     ["石墨銑床課", "0912004", "梁吉成", "", ""],
                     ["石墨銑床課", "1004017", "楊禮榮", "", ""],
                     ["石墨銑床課", "2005001", "任巧茹", "", ""],
-                    ["石墨銑床課", "2109009", "鄭玄瑋", "", ""]
+                    ["石墨銑床課", "2109009", "鄭玄瑋", "", ""],
+                    ["石墨銑床課", "2209003", "李譽輝", "", ""],
+                    ["石墨銑床課", "2602003", "王仁傑", "", ""],
+                    ["車床課", "0710001", "彭建智", "", ""],
+                    ["車床課", "0802006", "莊隆璿", "", ""],
+                    ["車床課", "0806001", "陳建華", "", ""],
+                    ["車床課", "1001002", "朱建誠", "", ""],
+                    ["車床課", "1006005", "彭世帆", "", ""],
+                    ["車床課", "1007012", "黃吉良", "", ""],
+                    ["車床課", "1010001", "陳秉鈛", "", ""]
                 ]
             },
             sheet4: {
@@ -175,8 +198,17 @@
                     ["石墨銑床課", "0803007", "程柏溪", "", "大功"],
                     ["石墨銑床課", "0912004", "梁吉成", "", "小功"],
                     ["石墨銑床課", "1004017", "楊禮榮", "", "嘉獎"],
-                    ["石墨銑床課", "2005001", "任巧茹", "", "大過"],
-                    ["石墨銑床課", "2109009", "鄭玄瑋", "", "小過"]
+                    ["石墨銑床課", "2005001", "任巧茹", "", ""],
+                    ["石墨銑床課", "2109009", "鄭玄瑋", "", ""],
+                    ["石墨銑床課", "2209003", "李譽輝", "", ""],
+                    ["石墨銑床課", "2602003", "王仁傑", "", ""],
+                    ["車床課", "0710001", "彭建智", "", ""],
+                    ["車床課", "0802006", "莊隆璿", "", ""],
+                    ["車床課", "0806001", "陳建華", "", ""],
+                    ["車床課", "1001002", "朱建誠", "", ""],
+                    ["車床課", "1006005", "彭世帆", "", ""],
+                    ["車床課", "1007012", "黃吉良", "", ""],
+                    ["車床課", "1010001", "陳秉鈛", "", ""]
                 ]
             },
             sheet5: {
@@ -187,17 +219,25 @@
                     ["石墨銑床課", "0912004", "梁吉成", "", "B級支援"],
                     ["石墨銑床課", "1004017", "楊禮榮", "", "C級支援"],
                     ["石墨銑床課", "2005001", "任巧茹", "", ""],
-                    ["石墨銑床課", "2109009", "鄭玄瑋", "", ""]
+                    ["石墨銑床課", "2109009", "鄭玄瑋", "", ""],
+                    ["石墨銑床課", "2209003", "李譽輝", "", ""],
+                    ["石墨銑床課", "2602003", "王仁傑", "", ""],
+                    ["車床課", "0710001", "彭建智", "", ""],
+                    ["車床課", "0802006", "莊隆璿", "", ""],
+                    ["車床課", "0806001", "陳建華", "", ""],
+                    ["車床課", "1001002", "朱建誠", "", ""],
+                    ["車床課", "1006005", "彭世帆", "", ""],
+                    ["車床課", "1007012", "黃吉良", "", ""],
+                    ["車床課", "1010001", "陳秉鈛", "", ""]
                 ]
             },
             sheet6: {
                 title: "6. 總分與部門排名總覽",
                 columns: ["部門名稱", "工號", "中文名", "加班配合度", "月競賽", "品質改善", "支援", "獎懲記錄", "總分", "排名"],
-                rows: [] // 由自動彙整計算生成
+                rows: []
             }
         };
 
-        // 監聽認證狀態
         auth.onAuthStateChanged(user => {
             const statusIndicator = document.getElementById('connection-status');
             const statusText = document.getElementById('status-text');
@@ -226,11 +266,8 @@
                     } else {
                         dbRef.set(appData);
                     }
-                    processSheet1Formulas();
-                    processSheetScores();
+                    processFormulasAndScores();
                     renderActiveTab();
-                }, error => {
-                    console.error("讀取資料失敗:", error);
                 });
             } else {
                 currentUser = null;
@@ -285,7 +322,7 @@
             if (tabId.startsWith('sheet')) {
                 document.getElementById('sheet-container').classList.remove('hidden');
                 if (tabId === 'sheet6') {
-                    processSheetScores(); // 進入工作表6時自動重新彙整計算
+                    processFormulasAndScores();
                 }
                 renderActiveTab();
             } else if (tabId === 'chartSection') {
@@ -300,83 +337,53 @@
             db.ref(`users/${currentUser.uid}/performanceData`).set(appData);
         }
 
-        // 自動計算工作表1的總計、平均每月加班時數與加減分
-        function processSheet1Formulas() {
-            if (!appData.sheet1) return;
-            appData.sheet1.rows.forEach(r => {
-                let weekday = Number(r[3]) || 0;
-                let restday = Number(r[4]) || 0;
-                let months = Number(r[5]) || 6;
-                let total = weekday + restday;
-                let avg = months > 0 ? Number((total / months).toFixed(2)) : 0;
-                
-                r[6] = total;
-                r[7] = avg;
-
-                // 30~40: +5, 41~46: +10, 21~30: -5, 20以下: -20
-                let score = "";
-                if (avg > 40 && avg <= 46) score = 10;
-                else if (avg >= 30 && avg <= 40) score = 5;
-                else if (avg >= 21 && avg < 30) score = -5;
-                else if (avg < 21 && (r[3] !== "" || r[4] !== "")) score = -20;
-                r[8] = score;
-            });
-        }
-
-        // 自動彙整工作表1~5分數並產生工作表6與各部門人員排行
-        function processSheetScores() {
-            processSheet1Formulas();
-            let employeeMap = {};
-
-            // 輔助函式：確保人員記錄存在
-            function getOrCreateEmp(dept, id, name) {
-                let key = `${id}_${name}`;
-                if (!employeeMap[key]) {
-                    employeeMap[key] = {
-                        dept: dept || "未分部門",
-                        id: id || "",
-                        name: name || "未知",
-                        s1: 0, s2: 0, s3: 0, s4: 0, s5: 0, total: 0
-                    };
-                }
-                return employeeMap[key];
-            }
-
-            // 1. 抓取工作表1加減分
+        // 統一自動計算工作表 1~5 的公式加減分，並彙整產生工作表 6
+        function processFormulasAndScores() {
+            // 1. 計算工作表 1 加班配合度公式
             if (appData.sheet1) {
                 appData.sheet1.rows.forEach(r => {
-                    let emp = getOrCreateEmp(r[0], r[1], r[2]);
-                    emp.s1 = Number(r[8]) || 0;
+                    let weekday = Number(r[3]) || 0;
+                    let restday = Number(r[4]) || 0;
+                    let months = Number(r[5]) || 6;
+                    let total = weekday + restday;
+                    let avg = months > 0 ? Number((total / months).toFixed(2)) : 0;
+                    
+                    r[6] = total;
+                    r[7] = avg;
+
+                    let score = "";
+                    if (avg > 40 && avg <= 46) score = 10;
+                    else if (avg >= 30 && avg <= 40) score = 5;
+                    else if (avg >= 21 && avg < 30) score = -5;
+                    else if (avg < 21 && (r[3] !== "" || r[4] !== "")) score = -20;
+                    r[8] = score;
                 });
             }
 
-            // 2. 抓取工作表2月競賽 (優勝+10, 入選+5)
+            // 2. 計算工作表 2 月競賽加分
             if (appData.sheet2) {
                 appData.sheet2.rows.forEach(r => {
-                    let emp = getOrCreateEmp(r[0], r[1], r[2]);
                     let note = r[4] || r[3] || "";
                     let pts = 0;
                     if (note.includes("優勝")) pts = 10;
                     else if (note.includes("入選")) pts = 5;
-                    emp.s2 = pts;
+                    r[3] = pts !== 0 ? pts : "";
                 });
             }
 
-            // 3. 抓取工作表3品質改善 (品質改善+3)
+            // 3. 計算工作表 3 品質改善加分
             if (appData.sheet3) {
                 appData.sheet3.rows.forEach(r => {
-                    let emp = getOrCreateEmp(r[0], r[1], r[2]);
                     let note = r[4] || r[3] || "";
                     let pts = 0;
                     if (note.includes("品質改善")) pts = 3;
-                    emp.s3 = pts;
+                    r[3] = pts !== 0 ? pts : "";
                 });
             }
 
-            // 4. 抓取工作表4獎懲記錄 (大功+20,小功+10,嘉獎+5,大過-20,小過-10,申誡-5)
+            // 4. 計算工作表 4 獎懲記錄加減分
             if (appData.sheet4) {
                 appData.sheet4.rows.forEach(r => {
-                    let emp = getOrCreateEmp(r[0], r[1], r[2]);
                     let note = r[4] || r[3] || "";
                     let pts = 0;
                     if (note.includes("大功")) pts = 20;
@@ -385,56 +392,92 @@
                     else if (note.includes("大過")) pts = -20;
                     else if (note.includes("小過")) pts = -10;
                     else if (note.includes("申誡")) pts = -5;
-                    emp.s4 = pts;
+                    r[3] = pts !== 0 ? pts : "";
                 });
             }
 
-            // 5. 抓取工作表5支援 (A級支援+10, B級支援+5, C級支援+3)
+            // 5. 計算工作表 5 支援加分
             if (appData.sheet5) {
                 appData.sheet5.rows.forEach(r => {
-                    let emp = getOrCreateEmp(r[0], r[1], r[2]);
                     let note = r[4] || r[3] || "";
                     let pts = 0;
                     if (note.includes("A級支援")) pts = 10;
                     else if (note.includes("B級支援")) pts = 5;
                     else if (note.includes("C級支援")) pts = 3;
-                    emp.s5 = pts;
+                    r[3] = pts !== 0 ? pts : "";
                 });
             }
 
-            // 計算總分
+            // 6. 彙整至工作表 6：以工作表 1 的人員清單與部門為基準進行分數對應
+            let employeeMap = {};
+            if (appData.sheet1) {
+                appData.sheet1.rows.forEach(r => {
+                    let key = `${r[1]}_${r[2]}`;
+                    employeeMap[key] = {
+                        dept: r[0], id: r[1], name: r[2],
+                        s1: Number(r[8]) || 0, s2: 0, s3: 0, s4: 0, s5: 0, total: 0
+                    };
+                });
+            }
+
+            if (appData.sheet2) {
+                appData.sheet2.rows.forEach(r => {
+                    let key = `${r[1]}_${r[2]}`;
+                    if (employeeMap[key]) employeeMap[key].s2 = Number(r[3]) || 0;
+                });
+            }
+            if (appData.sheet3) {
+                appData.sheet3.rows.forEach(r => {
+                    let key = `${r[1]}_${r[2]}`;
+                    if (employeeMap[key]) employeeMap[key].s3 = Number(r[3]) || 0;
+                });
+            }
+            if (appData.sheet5) {
+                appData.sheet5.rows.forEach(r => {
+                    let key = `${r[1]}_${r[2]}`;
+                    if (employeeMap[key]) employeeMap[key].s5 = Number(r[3]) || 0;
+                });
+            }
+            if (appData.sheet4) {
+                appData.sheet4.rows.forEach(r => {
+                    let key = `${r[1]}_${r[2]}`;
+                    if (employeeMap[key]) employeeMap[key].s4 = Number(r[3]) || 0;
+                });
+            }
+
             let empList = Object.values(employeeMap);
             empList.forEach(emp => {
                 emp.total = emp.s1 + emp.s2 + emp.s3 + emp.s4 + emp.s5;
             });
 
-            // 依照總分由高到低排序並計算整體排名
-            empList.sort((a, b) => b.total - a.total);
+            // 依照總分排序計算全體總排名
+            let sortedList = [...empList].sort((a, b) => b.total - a.total);
 
-            // 更新工作表6的 rows 資料
-            appData.sheet6.rows = empList.map((emp, idx) => [
-                emp.dept,
-                emp.id,
-                emp.name,
-                emp.s1,
-                emp.s2,
-                emp.s3,
-                emp.s5,
-                emp.s4,
-                emp.total,
-                idx + 1 // 排名
-            ]);
+            appData.sheet6.rows = empList.map(emp => {
+                let rank = sortedList.findIndex(e => e.id === emp.id && e.name === emp.name) + 1;
+                return [
+                    emp.dept, emp.id, emp.name,
+                    emp.s1, emp.s2, emp.s3, emp.s5, emp.s4,
+                    emp.total, rank
+                ];
+            });
         }
 
         function renderActiveTab() {
             if (!activeTab.startsWith('sheet')) return;
             
             if (activeTab === 'sheet6') {
-                processSheetScores(); // 確保切換到工作表6時數值為最新
+                processFormulasAndScores();
             }
 
             const sheet = appData[activeTab];
             const container = document.getElementById('sheet-container');
+
+            // 判定哪些欄位屬於「加減分/加分」欄位，設為唯讀不可手動編輯
+            let readOnlyCols = [];
+            if (activeTab === 'sheet1') readOnlyCols = [6, 7, 8]; // 總計, 平均, 加減分
+            if (activeTab === 'sheet2' || activeTab === 'sheet3' || activeTab === 'sheet5') readOnlyCols = [3]; // 加分
+            if (activeTab === 'sheet4') readOnlyCols = [3]; // 加減分
 
             let html = `
                 <div class="bg-white p-6 rounded-lg shadow">
@@ -446,29 +489,32 @@
                         <table class="min-w-full divide-y divide-gray-200 border">
                             <thead class="bg-gray-100">
                                 <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-12">排序</th>
-                                    ${sheet.columns.map((col, cIdx) => `
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase cursor-pointer hover:bg-gray-200"
-                                            ondblclick="editColumnName('${activeTab}',${cIdx})" title="雙擊可更改欄位名稱">
-                                            ${col} ✏️
+                                    ${activeTab !== 'sheet6' ? `<th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase w-16">刪除</th>` : ''}
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-12">序</th>
+                                    ${sheet.columns.map(col => `
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">
+                                            ${col}
                                         </th>
                                     `).join('')}
-                                    ${activeTab !== 'sheet6' ? `<th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">操作</th>` : ''}
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-200" id="sortable-tbody">
+                            <tbody class="bg-white divide-y divide-gray-200">
                                 ${sheet.rows.map((row, rIdx) => `
-                                    <tr draggable="true" ondragstart="drag(event, ${rIdx})" ondragover="allowDrop(event)" ondrop="drop(event, ${rIdx}, '${activeTab}')" class="hover:bg-gray-50 cursor-move">
-                                        <td class="px-4 py-2 text-sm text-gray-400">☰ ${rIdx + 1}</td>${row.map((cell, cIdx) => `
-                                            <td class="px-4 py-2 text-sm text-gray-700" ${activeTab !== 'sheet6' ? 'contenteditable="true" onblur="updateCell(\'' + activeTab + '\', ' + rIdx + ', ' + cIdx + ', this)"' : ''}>
-                                                ${cell}
-                                            </td>
-                                        `).join('')}
+                                    <tr class="hover:bg-gray-50">
                                         ${activeTab !== 'sheet6' ? `
-                                            <td class="px-4 py-2 text-right text-sm font-medium">
-                                                <button onclick="deleteRow('${activeTab}',${rIdx})" class="text-red-600 hover:text-red-900">刪除</button>
+                                            <td class="px-3 py-2 text-center">
+                                                <button onclick="deleteRow('${activeTab}', ${rIdx})" class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5 rounded border border-red-200 bg-red-50 text-xs">刪除</button>
                                             </td>
                                         ` : ''}
+                                        <td class="px-4 py-2 text-sm text-gray-400">${rIdx + 1}</td>${row.map((cell, cIdx) => {
+                                            let isRO = (activeTab === 'sheet6') || readOnlyCols.includes(cIdx);
+                                            return `
+                                                <td class="px-4 py-2 text-sm text-gray-700 ${isRO ? 'bg-gray-50 text-gray-500 font-medium' : ''}" 
+                                                    ${!isRO ? `contenteditable="true" onblur="updateCell('${activeTab}', ${rIdx},${cIdx}, this)"` : ''}>
+                                                    ${cell}
+                                                </td>
+                                            `;
+                                        }).join('')}
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -479,20 +525,9 @@
             container.innerHTML = html;
         }
 
-        function editColumnName(sheetKey, cIdx) {
-            if (sheetKey === 'sheet6') return; // 工作表6固定欄位
-            const currentName = appData[sheetKey].columns[cIdx];
-            const newName = prompt("請輸入新的欄位名稱：", currentName);
-            if (newName && newName.trim() !== "") {
-                appData[sheetKey].columns[cIdx] = newName.trim();
-                saveData();
-                renderActiveTab();
-            }
-        }
-
         function updateCell(sheetKey, rIdx, cIdx, el) {
             appData[sheetKey].rows[rIdx][cIdx] = el.innerText.trim();
-            processSheet1Formulas();
+            processFormulasAndScores();
             saveData();
         }
 
@@ -512,28 +547,10 @@
             }
         }
 
-        let draggedRowIndex = null;
-        function drag(ev, rIdx) {
-            draggedRowIndex = rIdx;
-        }
-        function allowDrop(ev) {
-            ev.preventDefault();
-        }
-        function drop(ev, targetIdx, sheetKey) {
-            ev.preventDefault();
-            if (draggedRowIndex === null || draggedRowIndex === targetIdx || sheetKey === 'sheet6') return;
-            const rows = appData[sheetKey].rows;
-            const movedRow = rows.splice(draggedRowIndex, 1)[0];
-            rows.splice(targetIdx, 0, movedRow);
-            draggedRowIndex = null;
-            saveData();
-            renderActiveTab();
-        }
-
         let rankingChartInstance = null;
 
         function updateDeptSelectOptions() {
-            processSheetScores();
+            processFormulasAndScores();
             const selectEl = document.getElementById('chart-dept-select');
             let depts = new Set();
             if (appData.sheet6 && appData.sheet6.rows) {
@@ -552,7 +569,7 @@
         }
 
         function renderCharts() {
-            processSheetScores();
+            processFormulasAndScores();
             const selectedDept = document.getElementById('chart-dept-select').value;
             let rows = appData.sheet6.rows || [];
 
@@ -589,7 +606,7 @@
         }
 
         function exportToExcel() {
-            processSheetScores();
+            processFormulasAndScores();
             const wb = XLSX.utils.book_new();
             Object.keys(appData).forEach(key => {
                 const sheet = appData[key];
@@ -619,7 +636,7 @@
                         }
                     }
                 });
-                processSheetScores();
+                processFormulasAndScores();
                 saveData();
                 renderActiveTab();
                 alert("Excel 資料匯入成功並已同步至雲端！");
