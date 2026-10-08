@@ -233,7 +233,7 @@
             },
             sheet6: {
                 title: "6. 總分與部門排名總覽",
-                columns: ["部門名稱", "工號", "中文名", "加班配合度", "月競賽", "品質改善", "支援", "獎懲記錄", "總分", "排名"],
+                columns: ["部門名稱", "工號", "中文名", "加班配合度", "月競賽", "品質改善", "支援", "獎懲紀錄", "總分", "排名"],
                 rows: []
             }
         };
@@ -337,7 +337,7 @@
             db.ref(`users/${currentUser.uid}/performanceData`).set(appData);
         }
 
-        // 統一自動計算工作表 1~5 的公式加減分，並彙整產生工作表 6
+        // 統一自動計算工作表 1~5 的公式加減分，並對應順序彙整產生工作表 6
         function processFormulasAndScores() {
             // 1. 計算工作表 1 加班配合度公式
             if (appData.sheet1) {
@@ -415,7 +415,7 @@
                     let key = `${r[1]}_${r[2]}`;
                     employeeMap[key] = {
                         dept: r[0], id: r[1], name: r[2],
-                        s1: Number(r[8]) || 0, s2: 0, s3: 0, s4: 0, s5: 0, total: 0
+                        s1: Number(r[8]) || 0, s2: 0, s3: 0, s5: 0, s4: 0, total: 0
                     };
                 });
             }
@@ -447,7 +447,7 @@
 
             let empList = Object.values(employeeMap);
             empList.forEach(emp => {
-                emp.total = emp.s1 + emp.s2 + emp.s3 + emp.s4 + emp.s5;
+                emp.total = emp.s1 + emp.s2 + emp.s3 + emp.s5 + emp.s4;
             });
 
             // 依照總分排序計算全體總排名
@@ -473,11 +473,10 @@
             const sheet = appData[activeTab];
             const container = document.getElementById('sheet-container');
 
-            // 判定哪些欄位屬於「加減分/加分」欄位，設為唯讀不可手動編輯
             let readOnlyCols = [];
-            if (activeTab === 'sheet1') readOnlyCols = [6, 7, 8]; // 總計, 平均, 加減分
-            if (activeTab === 'sheet2' || activeTab === 'sheet3' || activeTab === 'sheet5') readOnlyCols = [3]; // 加分
-            if (activeTab === 'sheet4') readOnlyCols = [3]; // 加減分
+            if (activeTab === 'sheet1') readOnlyCols = [6, 7, 8];
+            if (activeTab === 'sheet2' || activeTab === 'sheet3' || activeTab === 'sheet5') readOnlyCols = [3];
+            if (activeTab === 'sheet4') readOnlyCols = [3];
 
             let html = `
                 <div class="bg-white p-6 rounded-lg shadow">
