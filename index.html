@@ -72,19 +72,19 @@
                 </label>
             </div>
             <div class="text-xs text-gray-500">
-                提示：雙擊上方頁籤名稱可直接更改標題名稱；加減分與排行由系統自動帶入。
+                提示：在任意工作表頁籤上「雙擊滑鼠」即可直接更改名稱！
             </div>
         </div>
 
-        <!-- 頁籤導覽 (支援雙擊更改名稱) -->
+        <!-- 頁籤導覽 -->
         <nav id="tabs-nav" class="bg-white border-b px-6 flex space-x-6 overflow-x-auto">
-            <button onclick="switchTab('sheet1')" ondblclick="renameTab('sheet1')" class="tab-btn py-3 px-2 text-sm font-medium tab-active" data-target="sheet1" id="btn-sheet1">1. 加班配合度</button>
-            <button onclick="switchTab('sheet2')" ondblclick="renameTab('sheet2')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet2" id="btn-sheet2">2. 月競賽</button>
-            <button onclick="switchTab('sheet3')" ondblclick="renameTab('sheet3')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet3" id="btn-sheet3">3. 品質改善</button>
-            <button onclick="switchTab('sheet4')" ondblclick="renameTab('sheet4')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet4" id="btn-sheet4">4. 獎懲紀錄</button>
-            <button onclick="switchTab('sheet5')" ondblclick="renameTab('sheet5')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet5" id="btn-sheet5">5. 跨單位支援</button>
-            <button onclick="switchTab('sheet6')" ondblclick="renameTab('sheet6')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet6" id="btn-sheet6">6. 總分與部門排行</button>
-            <button onclick="switchTab('sheet7')" ondblclick="renameTab('sheet7')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet7" id="btn-sheet7">7. 排行視覺圖表</button>
+            <button class="tab-btn py-3 px-2 text-sm font-medium tab-active" data-target="sheet1" id="btn-sheet1">1. 加班配合度</button>
+            <button class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet2" id="btn-sheet2">2. 月競賽</button>
+            <button class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet3" id="btn-sheet3">3. 品質改善</button>
+            <button class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet4" id="btn-sheet4">4. 獎懲紀錄</button>
+            <button class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet5" id="btn-sheet5">5. 跨單位支援</button>
+            <button class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet6" id="btn-sheet6">6. 總分與部門排行</button>
+            <button class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet7" id="btn-sheet7">7. 排行視覺圖表</button>
         </nav>
 
         <!-- 內容主體區 -->
@@ -125,7 +125,6 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.database();
-        const analytics = firebase.analytics();
 
         let currentUser = null;
         let isSignUp = false;
@@ -244,6 +243,20 @@
             }
         };
 
+        // 初始化頁籤按鈕事件監聽（確保點擊切換、雙擊改名完美運作）
+        document.addEventListener('DOMContentLoaded', () => {
+            ['sheet1', 'sheet2', 'sheet3', 'sheet4', 'sheet5', 'sheet6', 'sheet7'].forEach(key => {
+                const btn = document.getElementById(`btn-${key}`);
+                if (btn) {
+                    btn.addEventListener('click', () => switchTab(key));
+                    btn.addEventListener('dblclick', (e) => {
+                        e.preventDefault();
+                        renameTab(key);
+                    });
+                }
+            });
+        });
+
         auth.onAuthStateChanged(user => {
             const statusIndicator = document.getElementById('connection-status');
             const statusText = document.getElementById('status-text');
@@ -268,7 +281,6 @@
                 dbRef.on('value', snapshot => {
                     const data = snapshot.val();
                     if (data) {
-                        // 合併確保擁有 sheet7 與新架構
                         appData = { ...appData, ...data };
                     } else {
                         dbRef.set(appData);
@@ -366,7 +378,6 @@
             db.ref(`users/${currentUser.uid}/performanceData`).set(appData);
         }
 
-        // 自動計算工作表 1~5 分數並彙整至工作表 6
         function processFormulasAndScores() {
             if (appData.sheet1) {
                 appData.sheet1.rows.forEach(r => {
