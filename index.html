@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工廠個人績效分析系統</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (Excel 匯入匯出) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Firebase SDK (Compat v10) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <style>
+        .tab-active { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- 登入畫面 -->
+    <div id="auth-screen" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">工廠績效管理系統登入</h2>
+            <div id="auth-error" class="mb-4 text-red-500 text-sm text-center hidden"></div>
+            <form id="auth-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">電子郵件</label>
+                    <input type="email" id="auth-email" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">密碼</label>
+                    <input type="password" id="auth-password" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <button type="button" id="toggle-auth-mode" class="text-blue-600 hover:underline">切換為註冊帳號</button>
+                </div>
+                <button type="submit" id="auth-submit-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition font-medium">登入</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 主應用程式介面 -->
+    <div id="app-screen" class="hidden flex-1 flex flex-col">
+        <!-- 頂部導覽列 -->
+        <header class="bg-white shadow px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-xl font-bold text-gray-800">🏭 工廠個人績效分析系統</h1>
+                <!-- 雲端連線狀態指示器 -->
+                <div id="connection-status" class="flex items-center space-x-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
+                    <span class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                    <span id="status-text">連線同步中...</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="user-email-display" class="text-sm text-gray-600"></span>
+                <button id="logout-btn" class="bg-red-500 text-white px-3 py-1.5 rounded text-sm hover:bg-red-600 transition">登出</button>
+            </div>
+        </header>
+
+        <!-- 工具列 (Excel 匯入/匯出) -->
+        <div class="bg-white border-b px-6 py-2 flex justify-between items-center text-sm">
+            <div class="flex space-x-2">
+                <button onclick="exportToExcel()" class="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition flex items-center space-x-1">
+                    <span>📥 匯出 Excel</span>
+                </button>
+                <label class="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition cursor-pointer flex items-center space-x-1">
+                    <span>📤 匯入 Excel</span>
+                    <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+                </label>
+            </div>
+            <div class="text-xs text-gray-500">
+                提示：工作表欄位標題與表格內容皆可雙擊修改；支援拖曳排序。
+            </div>
+        </div>
+
+        <!-- 頁籤導覽 -->
+        <nav class="bg-white border-b px-6 flex space-x-6 overflow-x-auto">
+            <button onclick="switchTab('sheet1')" class="tab-btn py-3 px-2 text-sm font-medium tab-active" data-target="sheet1">1. 加班配合度</button>
+            <button onclick="switchTab('sheet2')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet2">2. 月競賽</button>
+            <button onclick="switchTab('sheet3')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet3">3. 品質改善</button>
+            <button onclick="switchTab('sheet4')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet4">4. 獎懲紀錄</button>
+            <button onclick="switchTab('sheet5')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="sheet5">5. 跨單位支援</button>
+            <button onclick="switchTab('chart1')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="chart1">📊 各課分數及排行</button>
+            <button onclick="switchTab('chart2')" class="tab-btn py-3 px-2 text-sm font-medium text-gray-500 hover:text-gray-700" data-target="chart2">📈 整體分數及排行</button>
+        </nav>
+
+        <!-- 內容主體區 -->
+        <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
+            <!-- 動態資料表格工作表區塊 -->
+            <div id="sheet-container"></div>
+
+            <!-- 分析圖表 1 -->
+            <div id="chart1-section" class="tab-content hidden bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-bold mb-4">各課分數及排行總表</h2>
+                <div class="w-full h-96">
+                    <canvas id="deptChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 分析圖表 2 -->
+            <div id="chart2-section" class="tab-content hidden bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-bold mb-4">整體個人分數及排行總表</h2>
+                <div class="w-full h-96">
+                    <canvas id="overallChart"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase 與應用邏輯程式碼 -->
+    <script>
+        // TODO: 請替換為您自己的 Firebase 專案設定
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        let currentUser = null;
+        let isSignUp = false;
+        let activeTab = 'sheet1';
+
+        // 預設表單結構與初始資料
+        let appData = {
+            sheet1: {
+                title: "加班配合度",
+                columns: ["員工編號", "姓名", "課別", "加班時數", "配合度評分", "備註"],
+                rows: [
+                    ["A001", "王小明", "機械課", "20", "95", "配合度高"],
+                    ["A002", "李大華", "組立課", "15", "85", "正常"]
+                ]
+            },
+            sheet2: {
+                title: "月競賽 (優勝+10 | 入選+5)",
+                columns: ["員工編號", "姓名", "課別", "獎項類型(優勝/入選)", "加分"],
+                rows: [
+                    ["A001", "王小明", "機械課", "優勝", "10"],
+                    ["A002", "李大華", "組立課", "入選", "5"]
+                ]
+            },
+            sheet3: {
+                title: "品質改善 (+3分/件)",
+                columns: ["員工編號", "姓名", "課別", "改善案名稱", "件數", "得分"],
+                rows: [
+                    ["A001", "王小明", "機械課", "優化夾具防呆", "2", "6"]
+                ]
+            },
+            sheet4: {
+                title: "獎懲紀錄 (大過-20 | 小過-10 | 申誡-5)",
+                columns: ["員工編號", "姓名", "課別", "獎懲項目", "次數", "扣分/加分"],
+                rows: [
+                    ["A002", "李大華", "組立課", "申誡", "1", "-5"]
+                ]
+            },
+            sheet5: {
+                title: "跨單位支援 (+3 ~ +10)",
+                columns: ["員工編號", "姓名", "原單位", "支援單位", "支援任務說明", "得分"],
+                rows: [
+                    ["A001", "王小明", "機械課", "品保課", "緊急支援量測", "5"]
+                ]
+            }
+        };
+
+        // 監聽認證狀態
+        auth.onAuthStateChanged(user => {
+            const statusIndicator = document.getElementById('connection-status');
+            const statusText = document.getElementById('status-text');
+            if (user) {
+                currentUser = user;
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('app-screen').classList.remove('hidden');
+                document.getElementById('user-email-display').textContent = user.email;
+                
+                // 連結 Firebase Realtime Database
+                const dbRef = db.ref(`users/${user.uid}/performanceData`);
+                
+                // 檢查連線狀態
+                db.ref('.info/connected').on('value', snap => {
+                    if (snap.val() === true) {
+                        statusIndicator.className = "flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold";
+                        statusText.textContent = "雲端已連線";
+                    } else {
+                        statusIndicator.className = "flex items-center space-x-2 px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold";
+                        statusText.textContent = "連線中斷";
+                    }
+                });
+
+                // 同步資料
+                dbRef.on('value', snapshot => {
+                    const data = snapshot.val();
+                    if (data) {
+                        appData = data;
+                    } else {
+                        dbRef.set(appData); // 寫入預設資料
+                    }
+                    renderActiveTab();
+                }, error => {
+                    console.error("讀取資料失敗:", error);
+                });
+            } else {
+                currentUser = null;
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('app-screen').classList.add('hidden');
+            }
+        });
+
+        // 登入/註冊表單提交
+        document.getElementById('auth-form').addEventListener('submit', e => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const errDiv = document.getElementById('auth-error');
+            errDiv.classList.add('hidden');
+
+            if (isSignUp) {
+                auth.createUserWithEmailAndPassword(email, password).catch(err => {
+                    errDiv.textContent = err.message;
+                    errDiv.classList.remove('hidden');
+                });
+            } else {
+                auth.signInWithEmailAndPassword(email, password).catch(err => {
+                    errDiv.textContent = "登入失敗：" + err.message;
+                    errDiv.classList.remove('hidden');
+                });
+            }
+        });
+
+        document.getElementById('toggle-auth-mode').addEventListener('click', () => {
+            isSignUp = !isSignUp;
+            document.getElementById('toggle-auth-mode').textContent = isSignUp ? "已有帳號？返回登入" : "切換為註冊帳號";
+            document.getElementById('auth-submit-btn').textContent = isSignUp ? "註冊" : "登入";
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+
+        // 切換頁籤
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.target === tabId) {
+                    btn.classList.add('tab-active');
+                    btn.classList.remove('text-gray-500');
+                } else {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('text-gray-500');
+                }
+            });
+
+            document.getElementById('sheet-container').classList.add('hidden');
+            document.getElementById('chart1-section').classList.add('hidden');
+            document.getElementById('chart2-section').classList.add('hidden');
+
+            if (tabId.startsWith('sheet')) {
+                document.getElementById('sheet-container').classList.remove('hidden');
+                renderActiveTab();
+            } else if (tabId === 'chart1') {
+                document.getElementById('chart1-section').classList.remove('hidden');
+                renderDeptChart();
+            } else if (tabId === 'chart2') {
+                document.getElementById('chart2-section').classList.remove('hidden');
+                renderOverallChart();
+            }
+        }
+
+        // 儲存資料到 Firebase
+        function saveData() {
+            if (!currentUser) return;
+            db.ref(`users/${currentUser.uid}/performanceData`).set(appData);
+        }
+
+        // 渲染目前的工作表
+        function renderActiveTab() {
+            if (!activeTab.startsWith('sheet')) return;
+            const sheet = appData[activeTab];
+            const container = document.getElementById('sheet-container');
+
+            let html = `
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-gray-800">${sheet.title}</h2>
+                        <button onclick="addRow('${activeTab}')" class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600 transition">+ 新增資料列</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 border">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-12">排序</th>
+                                    ${sheet.columns.map((col, cIdx) => `
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase cursor-pointer hover:bg-gray-200"
+                                            ondblclick="editColumnName('${activeTab}',${cIdx})" title="雙擊可更改欄位名稱">
+                                            ${col} ✏️
+                                        </th>
+                                    `).join('')}
+                                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="sortable-tbody">
+                                ${sheet.rows.map((row, rIdx) => `
+                                    <tr draggable="true" ondragstart="drag(event, ${rIdx})" ondragover="allowDrop(event)" ondrop="drop(event, ${rIdx}, '${activeTab}')" class="hover:bg-gray-50 cursor-move">
+                                        <td class="px-4 py-2 text-sm text-gray-400">☰ ${rIdx + 1}</td>${row.map((cell, cIdx) => `
+                                            <td class="px-4 py-2 text-sm text-gray-700" contenteditable="true" onblur="updateCell('${activeTab}', ${rIdx}, ${cIdx}, this)">
+                                                ${cell}
+                                            </td>
+                                        `).join('')}
+                                        <td class="px-4 py-2 text-right text-sm font-medium">
+                                            <button onclick="deleteRow('${activeTab}',${rIdx})" class="text-red-600 hover:text-red-900">刪除</button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        // 欄位雙擊改名
+        function editColumnName(sheetKey, cIdx) {
+            const currentName = appData[sheetKey].columns[cIdx];
+            const newName = prompt("請輸入新的欄位名稱：", currentName);
+            if (newName && newName.trim() !== "") {
+                appData[sheetKey].columns[cIdx] = newName.trim();
+                saveData();
+                renderActiveTab();
+            }
+        }
+
+        // 儲存儲存格編輯
+        function updateCell(sheetKey, rIdx, cIdx, el) {
+            appData[sheetKey].rows[rIdx][cIdx] = el.innerText.trim();
+            saveData();
+        }
+
+        // 新增資料列
+        function addRow(sheetKey) {
+            const colCount = appData[sheetKey].columns.length;
+            const newRow = new Array(colCount).fill("新資料");
+            appData[sheetKey].rows.push(newRow);
+            saveData();
+            renderActiveTab();
+        }
+
+        // 刪除資料列
+        function deleteRow(sheetKey, rIdx) {
+            if (confirm("確定要刪除此筆資料嗎？")) {
+                appData[sheetKey].rows.splice(rIdx, 1);
+                saveData();
+                renderActiveTab();
+            }
+        }
+
+        // 拖曳排序邏輯
+        let draggedRowIndex = null;
+        function drag(ev, rIdx) {
+            draggedRowIndex = rIdx;
+        }
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+        function drop(ev, targetIdx, sheetKey) {
+            ev.preventDefault();
+            if (draggedRowIndex === null || draggedRowIndex === targetIdx) return;
+            const rows = appData[sheetKey].rows;
+            const movedRow = rows.splice(draggedRowIndex, 1)[0];
+            rows.splice(targetIdx, 0, movedRow);
+            draggedRowIndex = null;
+            saveData();
+            renderActiveTab();
+        }
+
+        // 統計計算引擎 (計算員工總分與各課總分)
+        function calculateScores() {
+            let employeeScores = {}; // { "姓名 (課別)": score }
+            let deptScores = {};     // { "課別": totalScore }
+
+            // 輔助累加分數
+            function addScore(name, dept, score) {
+                if (!name || name === "新資料") return;
+                const key = `${name} (${dept || '未分課'})`;
+                if (!employeeScores[key]) employeeScores[key] = { name, dept: dept || '未分課', total: 0 };
+                employeeScores[key].total += Number(score) || 0;
+            }
+
+            // 處理各表分數邏輯
+            // Sheet 1: 加拿配合度 (假設評分直接計入或作為權重，此處簡化以評分計)
+            if (appData.sheet1) {
+                appData.sheet1.rows.forEach(r => addScore(r[1], r[2], Number(r[4]) || 0));
+            }
+            // Sheet 2: 月競賽 (優勝+10, 入選+5)
+            if (appData.sheet2) {
+                appData.sheet2.rows.forEach(r => {
+                    let pts = r[3].includes("優勝") ? 10 : (r[3].includes("入選") ? 5 : 0);
+                    addScore(r[1], r[2], pts);
+                });
+            }
+            // Sheet 3: 品質改善 (+3分/件)
+            if (appData.sheet3) {
+                appData.sheet3.rows.forEach(r => {
+                    let pts = (Number(r[4]) || 0) * 3;
+                    addScore(r[1], r[2], pts);
+                });
+            }
+            // Sheet 4: 獎懲紀錄 (大過-20 | 小過-10 | 申誡-5)
+            if (appData.sheet4) {
+                appData.sheet4.rows.forEach(r => {
+                    let type = r[3];
+                    let count = Number(r[4]) || 1;
+                    let pts = 0;
+                    if (type.includes("大過")) pts = -20 * count;
+                    else if (type.includes("小過")) pts = -10 * count;
+                    else if (type.includes("申誡")) pts = -5 * count;
+                    addScore(r[1], r[2], pts);
+                });
+            }
+            // Sheet 5: 跨單位支援
+            if (appData.sheet5) {
+                appData.sheet5.rows.forEach(r => addScore(r[1], r[2], Number(r[5]) || 0));
+            }
+
+            // 彙整各課總分
+            Object.values(employeeScores).forEach(emp => {
+                deptScores[emp.dept] = (deptScores[emp.dept] || 0) + emp.total;
+            });
+
+            return { employeeScores, deptScores };
+        }
+
+        let deptChartInstance = null;
+        let overallChartInstance = null;
+
+        // 渲染圖表 1: 各課分數排行
+        function renderDeptChart() {
+            const { deptScores } = calculateScores();
+            const labels = Object.keys(deptScores);
+            const data = Object.values(deptScores);
+
+            const ctx = document.getElementById('deptChart').getContext('2d');
+            if (deptChartInstance) deptChartInstance.destroy();
+
+            deptChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.length ? labels : ['無資料'],
+                    datasets: [{
+                        label: '各課總積分',
+                        data: data.length ? data : [0],
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // 渲染圖表 2: 整體個人分數排行
+        function renderOverallChart() {
+            const { employeeScores } = calculateScores();
+            const sortedEmp = Object.values(employeeScores).sort((a, b) => b.total - a.total);
+            const labels = sortedEmp.map(e => `${e.name} (${e.dept})`);
+            const data = sortedEmp.map(e => e.total);
+
+            const ctx = document.getElementById('overallChart').getContext('2d');
+            if (overallChartInstance) overallChartInstance.destroy();
+
+            overallChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.length ? labels : ['無資料'],
+                    datasets: [{
+                        label: '個人總積分排行',
+                        data: data.length ? data : [0],
+                        backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // Excel 匯出功能
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            Object.keys(appData).forEach(key => {
+                const sheet = appData[key];
+                const wsData = [sheet.columns, ...sheet.rows];
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                XLSX.utils.book_append_sheet(wb, ws, sheet.title.substring(0, 30));
+            });
+            XLSX.writeFile(wb, "工廠個人績效分析報表.xlsx");
+        }
+
+        // Excel 匯入功能
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                let sKeys = Object.keys(appData);
+                workbook.SheetNames.forEach((sheetName, idx) => {
+                    if (idx < sKeys.length) {
+                        const ws = workbook.Sheets[sheetName];
+                        const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                        if (json.length > 0) {
+                            appData[sKeys[idx]].columns = json[0];
+                            appData[sKeys[idx]].rows = json.slice(1).filter(r => r.length > 0);
+                        }
+                    }
+                });
+                saveData();
+                renderActiveTab();
+                alert("Excel 資料匯入成功並已同步至雲端！");
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
