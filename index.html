@@ -80,7 +80,7 @@
                     <span>✨ <b>品質改善</b>：提報獲採納 +3 分</span>
                     <span>🏅 <b>獎懲紀錄</b>：大功 +20 / 小功 +10 / 嘉獎 +5 (大過-20/小過-10/申誡-5)</span>
                     <span>🤝 <b>跨單位支援</b>：A級 +10 / B級 +5 / C級 +3</span>
-                    <span>⏱️ <b>加班配合度</b>：平均>40h (+10分) / 30~40h (+5分) / 21~29h (-5分) / <21h (-20分)</span>
+                    <span>⏱️ <b>加班配合度</b>：>40h (+20分) / 30~40h (+10分) / 21~29h (0分) / 10~21h (-10分) / <10h (-20分)</span>
                 </div>
             </div>
         </section>
@@ -453,10 +453,11 @@
                     r[7] = avg;
 
                     let score = "";
-                    if (avg > 40 && avg <= 46) score = 10;
-                    else if (avg >= 30 && avg <= 40) score = 5;
-                    else if (avg >= 21 && avg < 30) score = -5;
-                    else if (avg < 21 && (r[3] !== "" || r[4] !== "")) score = -20;
+                    if (avg > 40) score = 20;
+                    else if (avg >= 30 && avg <= 40) score = 10;
+                    else if (avg >= 21 && avg < 30) score = 0;
+                    else if (avg >= 10 && avg < 21) score = -10;
+                    else if (avg < 10 && (r[3] !== "" || r[4] !== "")) score = -20;
                     r[8] = score;
                 });
             }
