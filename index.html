@@ -185,22 +185,22 @@
         let appData = {
             sheet1: {
                 title: "1. 加班配合度",
-                columns: ["部門名稱", "工號", "中文名", "平日加班", "休息日加班", "區間(202601~202606)總月份", "總計", "平均每月加班時數", "加減分", "備註"],
+                columns: ["部門名稱", "工號", "中文名", "平日加班", "休息日加班", "區間(2026/1/1~2026/6/1)總月份", "總計", "平均每月加班時數", "加減分", "備註"],
                 rows: [
-                    ["石墨銑床課", "0803007", "程柏溪", "84", "192", "6", "", "", "", ""],
-                    ["石墨銑床課", "0912004", "梁吉成", "69", "96", "6", "", "", "", ""],
-                    ["石墨銑床課", "1004017", "楊禮榮", "60", "168", "6", "", "", "", ""],
-                    ["石墨銑床課", "2005001", "任巧茹", "180", "96", "6", "", "", "", ""],
-                    ["石墨銑床課", "2109009", "鄭玄瑋", "132", "144", "6", "", "", "", ""],
-                    ["石墨銑床課", "2209003", "李譽輝", "100", "100", "6", "", "", "", ""],
-                    ["石墨銑床課", "2602003", "王仁傑", "90", "90", "6", "", "", "", ""],
-                    ["車床課", "0710001", "彭建智", "120", "100", "6", "", "", "", ""],
-                    ["車床課", "0802006", "莊隆璿", "110", "90", "6", "", "", "", ""],
-                    ["車床課", "0806001", "陳建華", "80", "80", "6", "", "", "", ""],
-                    ["車床課", "1001002", "朱建誠", "95", "95", "6", "", "", "", ""],
-                    ["車床課", "1006005", "彭世帆", "105", "85", "6", "", "", "", ""],
-                    ["車床課", "1007012", "黃吉良", "70", "70", "6", "", "", "", ""],
-                    ["車床課", "1010001", "陳秉鈛", "115", "115", "6", "", "", "", ""]
+                    ["石墨銑床課", "0803007", "程柏溪", 84, 192, 6, "", "", "", ""],
+                    ["石墨銑床課", "0912004", "梁吉成", 69, 96, 6, "", "", "", ""],
+                    ["石墨銑床課", "1004017", "楊禮榮", 60, 168, 6, "", "", "", ""],
+                    ["石墨銑床課", "2005001", "任巧茹", 180, 96, 6, "", "", "", ""],
+                    ["石墨銑床課", "2109009", "鄭玄瑋", 132, 144, 6, "", "", "", ""],
+                    ["石墨銑床課", "2209003", "李譽輝", 100, 100, 6, "", "", "", ""],
+                    ["石墨銑床課", "2602003", "王仁傑", 90, 90, 6, "", "", "", ""],
+                    ["車床課", "0710001", "彭建智", 120, 100, 6, "", "", "", ""],
+                    ["車床課", "0802006", "莊隆璿", 110, 90, 6, "", "", "", ""],
+                    ["車床課", "0806001", "陳建華", 80, 80, 6, "", "", "", ""],
+                    ["車床課", "1001002", "朱建誠", 95, 95, 6, "", "", "", ""],
+                    ["車床課", "1006005", "彭世帆", 105, 85, 6, "", "", "", ""],
+                    ["車床課", "1007012", "黃吉良", 70, 70, 6, "", "", "", ""],
+                    ["車床課", "1010001", "陳秉鈛", 115, 115, 6, "", "", "", ""]
                 ]
             },
             sheet2: {
@@ -416,6 +416,8 @@
             document.getElementById('sheet7-container').classList.add('hidden');
             document.getElementById('sheet8-container').classList.add('hidden');
 
+            processFormulasAndScores();
+
             if (tabId === 'sheet7') {
                 document.getElementById('sheet7-container').classList.remove('hidden');
                 document.getElementById('sheet7-title').textContent = appData.sheet7.title;
@@ -428,9 +430,6 @@
                 renderSheet8Table();
             } else {
                 document.getElementById('sheet-container').classList.remove('hidden');
-                if (tabId === 'sheet6') {
-                    processFormulasAndScores();
-                }
                 renderActiveTab();
             }
         }
@@ -438,6 +437,25 @@
         function saveData() {
             if (!currentUser) return;
             db.ref(`users/${currentUser.uid}/performanceData`).set(appData);
+        }
+
+        // 日期標準化格式轉換函數 (轉為YYYY/M/D或維持文字格式)
+        function formatDateString(val) {
+            if (!val) return val;
+            let str = String(val).trim();
+            // 嘗試符合 YYYY/MM/DD 或 YYYY/M/D 格式
+            let match = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+            if (match) {
+                return `${match[1]}/${Number(match[2])}/${Number(match[3])}`;
+            }
+            return str;
+        }
+
+        // 數值型態清理函數
+        function parseNumeric(val) {
+            if (val === "" || val === null || val === undefined) return "";
+            let num = Number(val);
+            return isNaN(num) ? val : num;
         }
 
         function processFormulasAndScores() {
@@ -449,6 +467,9 @@
                     let total = weekday + restday;
                     let avg = months > 0 ? Number((total / months).toFixed(2)) : 0;
                     
+                    r[3] = weekday;
+                    r[4] = restday;
+                    r[5] = months;
                     r[6] = total;
                     r[7] = avg;
 
@@ -622,7 +643,13 @@
         }
 
         function updateCell(sheetKey, rIdx, cIdx, el) {
-            appData[sheetKey].rows[rIdx][cIdx] = el.innerText.trim();
+            let val = el.innerText.trim();
+            // 嘗試自動轉為數值若適用
+            if (!isNaN(val) && val !== "") {
+                appData[sheetKey].rows[rIdx][cIdx] = Number(val);
+            } else {
+                appData[sheetKey].rows[rIdx][cIdx] = val;
+            }
             processFormulasAndScores();
             saveData();
         }
@@ -751,7 +778,7 @@
                     <tbody class="bg-white divide-y divide-slate-200">
                         ${rows.map((row, idx) => {
                             let displayRow = [...row];
-                            // 將最後一欄（排名）替換成 名次/總人數 格式，例如 1/114 或 1/14
+                            // 將最後一欄（排名）替換成 名次/總人數 格式
                             displayRow[displayRow.length - 1] = `${idx + 1}/${totalCount}`;
 
                             return `
@@ -779,6 +806,7 @@
         }
 
         function exportSheet8Excel() {
+            processFormulasAndScores();
             const selectedDept = document.getElementById('table-dept-select').value;
             let rows = [...(appData.sheet6.rows || [])];
             if (selectedDept !== 'all') {
@@ -791,7 +819,10 @@
             const exportRows = rows.map((r, idx) => {
                 let displayRow = [...r];
                 displayRow[displayRow.length - 1] = `${idx + 1}/${totalCount}`;
-                return [idx + 1, ...displayRow];
+                // 確保數值轉為數字型態
+                return [idx + 1, displayRow[0], displayRow[1], displayRow[2], 
+                    parseNumeric(displayRow[3]), parseNumeric(displayRow[4]), parseNumeric(displayRow[5]), 
+                    parseNumeric(displayRow[6]), parseNumeric(displayRow[7]), parseNumeric(displayRow[8]), displayRow[9]];
             });
 
             const wsData = [["序", ...appData.sheet6.columns], ...exportRows];
@@ -806,7 +837,14 @@
             const wb = XLSX.utils.book_new();
             ['sheet1', 'sheet2', 'sheet3', 'sheet4', 'sheet5', 'sheet6'].forEach(key => {
                 const sheet = appData[key];
-                const wsData = [sheet.columns, ...sheet.rows];
+                // 確保數值欄位轉為數字
+                const formattedRows = sheet.rows.map(row => 
+                    row.map(cell => {
+                        let parsed = parseNumeric(cell);
+                        return typeof parsed === 'string' ? formatDateString(parsed) : parsed;
+                    })
+                );
+                const wsData = [sheet.columns, ...formattedRows];
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
                 XLSX.utils.book_append_sheet(wb, ws, sheet.title.substring(0, 30));
             });
@@ -818,24 +856,33 @@
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                let sKeys = ['sheet1', 'sheet2', 'sheet3', 'sheet4', 'sheet5', 'sheet6'];
-                workbook.SheetNames.forEach((sheetName, idx) => {
-                    if (idx < sKeys.length) {
-                        const ws = workbook.Sheets[sheetName];
-                        const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
-                        if (json.length > 0) {
-                            appData[sKeys[idx]].columns = json[0];
-                            appData[sKeys[idx]].rows = json.slice(1).filter(r => r.length > 0);
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    let sKeys = ['sheet1', 'sheet2', 'sheet3', 'sheet4', 'sheet5', 'sheet6'];
+                    workbook.SheetNames.forEach((sheetName, idx) => {
+                        if (idx < sKeys.length) {
+                            const ws = workbook.Sheets[sheetName];
+                            const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                            if (json.length > 0) {
+                                appData[sKeys[idx]].columns = json[0];
+                                appData[sKeys[idx]].rows = json.slice(1)
+                                    .filter(r => r.length > 0)
+                                    .map(row => row.map(cell => {
+                                        let num = parseNumeric(cell);
+                                        return typeof num === 'string' ? formatDateString(num) : num;
+                                    }));
+                            }
                         }
-                    }
-                });
-                processFormulasAndScores();
-                saveData();
-                renderActiveTab();
-                alert("Excel 資料匯入成功並已同步至雲端！");
+                    });
+                    processFormulasAndScores();
+                    saveData();
+                    renderActiveTab();
+                    alert("Excel 資料匯入成功並已同步至雲端！");
+                } catch (err) {
+                    alert("匯入失敗，請確認檔案格式是否正確：" + err.message);
+                }
             };
             reader.readAsArrayBuffer(file);
         }
