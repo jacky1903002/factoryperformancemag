@@ -185,7 +185,7 @@
         let appData = {
             sheet1: {
                 title: "1. 加班配合度",
-                columns: ["部門名稱", "工號", "中文名", "平日加班", "休息日加班", "區間(2026/1/1~2026/6/1)總月份", "總計", "平均每月加班時數", "加減分", "備註"],
+                columns: ["部門名稱", "工號", "中文名", "平日加班", "休息日加班", "區間(2026/10/1~2026/10/31)總月份", "總計", "平均每月加班時數", "加減分", "備註"],
                 rows: [
                     ["石墨銑床課", "0803007", "程柏溪", 84, 192, 6, "", "", "", ""],
                     ["石墨銑床課", "0912004", "梁吉成", 69, 96, 6, "", "", "", ""],
@@ -439,11 +439,11 @@
             db.ref(`users/${currentUser.uid}/performanceData`).set(appData);
         }
 
-        // 日期標準化格式轉換函數 (轉為YYYY/M/D或維持文字格式)
+        // 日期格式標準化函數 (轉為 2026/10/1 格式)
         function formatDateString(val) {
-            if (!val) return val;
+            if (!val) return "";
             let str = String(val).trim();
-            // 嘗試符合 YYYY/MM/DD 或 YYYY/M/D 格式
+            // 符合 YYYY/M/D 或 YYYY-M-D
             let match = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
             if (match) {
                 return `${match[1]}/${Number(match[2])}/${Number(match[3])}`;
@@ -451,7 +451,7 @@
             return str;
         }
 
-        // 數值型態清理函數
+        // 數值型態強制轉換函數
         function parseNumeric(val) {
             if (val === "" || val === null || val === undefined) return "";
             let num = Number(val);
@@ -460,6 +460,10 @@
 
         function processFormulasAndScores() {
             if (appData.sheet1) {
+                // 自動更新第一張表的日期欄位標題中的日期為 2026/10/1 格式
+                if (appData.sheet1.columns[5]) {
+                    appData.sheet1.columns[5] = "區間(2026/10/1~2026/10/31)總月份";
+                }
                 appData.sheet1.rows.forEach(r => {
                     let weekday = Number(r[3]) || 0;
                     let restday = Number(r[4]) || 0;
@@ -483,28 +487,31 @@
                 });
             }
 
+            // 確保備註欄位安全轉為字串並進行判斷
             if (appData.sheet2) {
                 appData.sheet2.rows.forEach(r => {
-                    let note = r[4] || r[3] || "";
+                    let note = String(r[4] !== undefined && r[4] !== null ? r[4] : (r[3] || ""));
                     let pts = 0;
                     if (note.includes("優勝")) pts = 10;
                     else if (note.includes("入選")) pts = 5;
                     r[3] = pts !== 0 ? pts : "";
+                    r[4] = note;
                 });
             }
 
             if (appData.sheet3) {
                 appData.sheet3.rows.forEach(r => {
-                    let note = r[4] || r[3] || "";
+                    let note = String(r[4] !== undefined && r[4] !== null ? r[4] : (r[3] || ""));
                     let pts = 0;
                     if (note.includes("品質改善")) pts = 3;
                     r[3] = pts !== 0 ? pts : "";
+                    r[4] = note;
                 });
             }
 
             if (appData.sheet4) {
                 appData.sheet4.rows.forEach(r => {
-                    let note = r[4] || r[3] || "";
+                    let note = String(r[4] !== undefined && r[4] !== null ? r[4] : (r[3] || ""));
                     let pts = 0;
                     if (note.includes("大功")) pts = 20;
                     else if (note.includes("小功")) pts = 10;
@@ -513,17 +520,19 @@
                     else if (note.includes("小過")) pts = -10;
                     else if (note.includes("申誡")) pts = -5;
                     r[3] = pts !== 0 ? pts : "";
+                    r[4] = note;
                 });
             }
 
             if (appData.sheet5) {
                 appData.sheet5.rows.forEach(r => {
-                    let note = r[4] || r[3] || "";
+                    let note = String(r[4] !== undefined && r[4] !== null ? r[4] : (r[3] || ""));
                     let pts = 0;
                     if (note.includes("A級支援")) pts = 10;
                     else if (note.includes("B級支援")) pts = 5;
                     else if (note.includes("C級支援")) pts = 3;
                     r[3] = pts !== 0 ? pts : "";
+                    r[4] = note;
                 });
             }
 
@@ -628,7 +637,7 @@
                                             return `
                                                 <td class="px-4 py-2.5 text-xs text-slate-700 ${isRO ? 'bg-slate-50/70 text-slate-500 font-medium' : ''}" 
                                                     ${!isRO ? `contenteditable="true" onblur="updateCell('${activeTab}', ${rIdx},${cIdx}, this)"` : ''}>
-                                                    ${cell}
+                                                    ${cell !== null && cell !== undefined ? cell : ''}
                                                 </td>
                                             `;
                                         }).join('')}
@@ -644,12 +653,7 @@
 
         function updateCell(sheetKey, rIdx, cIdx, el) {
             let val = el.innerText.trim();
-            // 嘗試自動轉為數值若適用
-            if (!isNaN(val) && val !== "") {
-                appData[sheetKey].rows[rIdx][cIdx] = Number(val);
-            } else {
-                appData[sheetKey].rows[rIdx][cIdx] = val;
-            }
+            appData[sheetKey].rows[rIdx][cIdx] = parseNumeric(val);
             processFormulasAndScores();
             saveData();
         }
@@ -719,7 +723,6 @@
                 rows = rows.filter(r => r[0] === selectedDept);
             }
 
-            // 依分數由高到低排序 (欄位 8 為總分)
             rows.sort((a, b) => Number(b[8]) - Number(a[8]));
 
             const labels = rows.map(r => `${r[2]} (${r[1]}) - ${r[0]}`);
@@ -761,10 +764,9 @@
                 rows = rows.filter(r => r[0] === selectedDept);
             }
 
-            // 依分數由高到低排序
             rows.sort((a, b) => Number(b[8]) - Number(a[8]));
 
-            const totalCount = rows.length; // 當前檢視範圍的總人數
+            const totalCount = rows.length;
             const wrapper = document.getElementById('sheet8-table-wrapper');
 
             let html = `
@@ -778,12 +780,11 @@
                     <tbody class="bg-white divide-y divide-slate-200">
                         ${rows.map((row, idx) => {
                             let displayRow = [...row];
-                            // 將最後一欄（排名）替換成 名次/總人數 格式
                             displayRow[displayRow.length - 1] = `${idx + 1}/${totalCount}`;
 
                             return `
                                 <tr class="hover:bg-slate-50 transition">
-                                    <td class="px-4 py-2.5 text-xs font-bold text-blue-900 font-mono">#${idx + 1}</td>${displayRow.map(cell => `<td class="px-4 py-2.5 text-xs text-slate-700">${cell}</td>`).join('')}
+                                    <td class="px-4 py-2.5 text-xs font-bold text-blue-900 font-mono">#${idx + 1}</td>${displayRow.map(cell => `<td class="px-4 py-2.5 text-xs text-slate-700">${cell !== null && cell !== undefined ? cell : ''}</td>`).join('')}
                                 </tr>
                             `;
                         }).join('')}
@@ -819,10 +820,19 @@
             const exportRows = rows.map((r, idx) => {
                 let displayRow = [...r];
                 displayRow[displayRow.length - 1] = `${idx + 1}/${totalCount}`;
-                // 確保數值轉為數字型態
-                return [idx + 1, displayRow[0], displayRow[1], displayRow[2], 
-                    parseNumeric(displayRow[3]), parseNumeric(displayRow[4]), parseNumeric(displayRow[5]), 
-                    parseNumeric(displayRow[6]), parseNumeric(displayRow[7]), parseNumeric(displayRow[8]), displayRow[9]];
+                return [
+                    idx + 1, 
+                    displayRow[0], 
+                    displayRow[1], 
+                    displayRow[2], 
+                    parseNumeric(displayRow[3]), 
+                    parseNumeric(displayRow[4]), 
+                    parseNumeric(displayRow[5]), 
+                    parseNumeric(displayRow[6]), 
+                    parseNumeric(displayRow[7]), 
+                    parseNumeric(displayRow[8]), 
+                    displayRow[9]
+                ];
             });
 
             const wsData = [["序", ...appData.sheet6.columns], ...exportRows];
@@ -837,7 +847,6 @@
             const wb = XLSX.utils.book_new();
             ['sheet1', 'sheet2', 'sheet3', 'sheet4', 'sheet5', 'sheet6'].forEach(key => {
                 const sheet = appData[key];
-                // 確保數值欄位轉為數字
                 const formattedRows = sheet.rows.map(row => 
                     row.map(cell => {
                         let parsed = parseNumeric(cell);
@@ -866,12 +875,13 @@
                             const ws = workbook.Sheets[sheetName];
                             const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
                             if (json.length > 0) {
-                                appData[sKeys[idx]].columns = json[0];
+                                appData[sKeys[idx]].columns = json[0].map(col => formatDateString(col));
                                 appData[sKeys[idx]].rows = json.slice(1)
                                     .filter(r => r.length > 0)
                                     .map(row => row.map(cell => {
                                         let num = parseNumeric(cell);
-                                        return typeof num === 'string' ? formatDateString(num) : num;
+                                        let finalVal = typeof num === 'string' ? formatDateString(num) : num;
+                                        return finalVal !== null && finalVal !== undefined ? finalVal : "";
                                     }));
                             }
                         }
