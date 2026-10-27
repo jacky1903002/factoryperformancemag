@@ -21,7 +21,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col font-sans">
 
-    <!-- 登入畫面 -->
+    <!-- 登入與註冊畫面 -->
     <div id="auth-screen" class="fixed inset-0 bg-slate-900 bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
         <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md border border-slate-200">
             <div class="text-center mb-6">
@@ -31,13 +31,18 @@
             </div>
             <div id="auth-error" class="mb-4 bg-rose-50 border border-rose-200 text-rose-600 p-3 rounded-lg text-sm text-center hidden"></div>
             <form id="auth-form" class="space-y-4">
+                <!-- 新增：真實姓名欄位（預設隱藏，切換為註冊時顯示） -->
+                <div id="auth-name-field" class="hidden">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">真實姓名</label>
+                    <input type="text" id="auth-name" placeholder="請輸入您的真實姓名" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-900 focus:border-blue-900 text-sm">
+                </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">電子郵件</label>
-                    <input type="email" id="auth-email" required class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-900 focus:border-blue-900 text-sm">
+                    <input type="email" id="auth-email" required placeholder="name@example.com" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-900 focus:border-blue-900 text-sm">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">密碼</label>
-                    <input type="password" id="auth-password" required class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-900 focus:border-blue-900 text-sm">
+                    <input type="password" id="auth-password" required placeholder="請輸入密碼" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-900 focus:border-blue-900 text-sm">
                 </div>
                 <div class="flex items-center justify-between text-sm">
                     <button type="button" id="toggle-auth-mode" class="text-blue-900 hover:underline font-medium">切換為註冊帳號</button>
@@ -49,7 +54,7 @@
 
     <!-- 主應用程式介面 -->
     <div id="app-screen" class="hidden flex-1 flex flex-col">
-        <!-- 頂部導覽列 (企業深藍色系) -->
+        <!-- 頂部導覽列 -->
         <header class="bg-blue-950 text-white shadow px-6 py-3.5 flex justify-between items-center border-b border-blue-900">
             <div class="flex items-center space-x-4">
                 <div class="bg-blue-900 p-2 rounded-lg text-lg">🏭</div>
@@ -63,12 +68,12 @@
                 </div>
             </div>
             <div class="flex items-center space-x-4">
-                <span id="user-email-display" class="text-xs text-blue-200 font-medium"></span>
+                <span id="user-info-display" class="text-xs text-blue-200 font-medium"></span>
                 <button id="logout-btn" class="bg-slate-800 text-slate-200 px-3 py-1.5 rounded-lg text-xs hover:bg-rose-700 hover:text-white transition font-medium border border-slate-700">登出</button>
             </div>
         </header>
 
-        <!-- 公式計算與計分邏輯敘述區塊 (商業版資訊欄) -->
+        <!-- 公式計算與計分邏輯敘述區塊 -->
         <section class="bg-white border-b border-slate-200 px-6 py-3 shadow-sm">
             <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs text-slate-600">
                 <div class="flex items-center space-x-2">
@@ -313,6 +318,7 @@
             });
         });
 
+        // 登入狀態監聽
         auth.onAuthStateChanged(user => {
             const statusIndicator = document.getElementById('connection-status');
             const statusText = document.getElementById('status-text');
@@ -320,16 +326,19 @@
                 currentUser = user;
                 document.getElementById('auth-screen').classList.add('hidden');
                 document.getElementById('app-screen').classList.remove('hidden');
-                document.getElementById('user-email-display').textContent = user.email;
+                
+                // 顯示真實姓名與電子郵件
+                const displayName = user.displayName || "使用者";
+                document.getElementById('user-info-display').textContent = `${displayName} (${user.email})`;
                 
                 const dbRef = db.ref(`users/${user.uid}/performanceData`);
                 
                 db.ref('.info/connected').on('value', snap => {
                     if (snap.val() === true) {
-                        statusIndicator.className = "ml-4 flex items-center space-x-2 px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-semibold";
+                        statusIndicator.className = "ml-4 flex items-center space-x-2 px-3 py-1 bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 rounded-full text-xs font-semibold";
                         statusText.textContent = "雲端已連線";
                     } else {
-                        statusIndicator.className = "ml-4 flex items-center space-x-2 px-3 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full text-xs font-semibold";
+                        statusIndicator.className = "ml-4 flex items-center space-x-2 px-3 py-1 bg-rose-500/25 text-rose-300 border border-rose-500/40 rounded-full text-xs font-semibold";
                         statusText.textContent = "連線中斷";
                     }
                 });
@@ -352,6 +361,7 @@
             }
         });
 
+        // 登入 / 註冊表單提交處理（含真實姓名註冊）
         document.getElementById('auth-form').addEventListener('submit', e => {
             e.preventDefault();
             const email = document.getElementById('auth-email').value;
@@ -360,10 +370,30 @@
             errDiv.classList.add('hidden');
 
             if (isSignUp) {
-                auth.createUserWithEmailAndPassword(email, password).catch(err => {
-                    errDiv.textContent = err.message;
+                const realName = document.getElementById('auth-name').value.trim();
+                if (!realName) {
+                    errDiv.textContent = "請輸入真實姓名";
                     errDiv.classList.remove('hidden');
-                });
+                    return;
+                }
+
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then(userCredential => {
+                        return userCredential.user.updateProfile({
+                            displayName: realName
+                        }).then(() => {
+                            // 同時將使用者基本資訊寫入 Realtime Database
+                            return db.ref(`users/${userCredential.user.uid}/profile`).set({
+                                email: email,
+                                realName: realName,
+                                createdAt: new Date().toISOString()
+                            });
+                        });
+                    })
+                    .catch(err => {
+                        errDiv.textContent = "註冊失敗：" + err.message;
+                        errDiv.classList.remove('hidden');
+                    });
             } else {
                 auth.signInWithEmailAndPassword(email, password).catch(err => {
                     errDiv.textContent = "登入失敗：" + err.message;
@@ -372,8 +402,17 @@
             }
         });
 
+        // 切換登入與註冊模式（顯示/隱藏真實姓名欄位）
         document.getElementById('toggle-auth-mode').addEventListener('click', () => {
             isSignUp = !isSignUp;
+            const nameField = document.getElementById('auth-name-field');
+            if (isSignUp) {
+                nameField.classList.remove('hidden');
+                document.getElementById('auth-name').setAttribute('required', 'true');
+            } else {
+                nameField.classList.add('hidden');
+                document.getElementById('auth-name').removeAttribute('required');
+            }
             document.getElementById('toggle-auth-mode').textContent = isSignUp ? "已有帳號？返回登入" : "切換為註冊帳號";
             document.getElementById('auth-submit-btn').textContent = isSignUp ? "註冊新帳號" : "登入系統";
         });
@@ -439,11 +478,9 @@
             db.ref(`users/${currentUser.uid}/performanceData`).set(appData);
         }
 
-        // 日期格式標準化函數 (轉為 2026/10/1 格式)
         function formatDateString(val) {
             if (!val) return "";
             let str = String(val).trim();
-            // 符合 YYYY/M/D 或 YYYY-M-D
             let match = str.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
             if (match) {
                 return `${match[1]}/${Number(match[2])}/${Number(match[3])}`;
@@ -451,7 +488,6 @@
             return str;
         }
 
-        // 數值型態強制轉換函數
         function parseNumeric(val) {
             if (val === "" || val === null || val === undefined) return "";
             let num = Number(val);
@@ -460,7 +496,6 @@
 
         function processFormulasAndScores() {
             if (appData.sheet1) {
-                // 自動更新第一張表的日期欄位標題中的日期為 2026/10/1 格式
                 if (appData.sheet1.columns[5]) {
                     appData.sheet1.columns[5] = "區間(2026/10/1~2026/10/31)總月份";
                 }
@@ -487,7 +522,6 @@
                 });
             }
 
-            // 確保備註欄位安全轉為字串並進行判斷
             if (appData.sheet2) {
                 appData.sheet2.rows.forEach(r => {
                     let note = String(r[4] !== undefined && r[4] !== null ? r[4] : (r[3] || ""));
@@ -577,7 +611,6 @@
                 emp.total = emp.s1 + emp.s2 + emp.s3 + emp.s5 + emp.s4;
             });
 
-            // 由高到低排序
             let sortedList = [...empList].sort((a, b) => b.total - a.total);
 
             appData.sheet6.rows = empList.map(emp => {
